@@ -1,0 +1,199 @@
+// Nez posix shell grammar
+// (see http://pubs.opengroup.org/onlinepubs/009695399/utilities/xcu_chap02.html)
+// =======================
+
+// ##############################
+// ##     grammar symbols      ##
+// ##############################
+
+// operator
+AND_IF    = '&&'
+OR_IF     = '||'
+DSEMI     = ';;'
+DLESS     = '<<'
+DGREAT    = '>>'
+LESSAND   = '<&'
+GREATAND  = '>&'
+LESSGREAT = '<>
+DLESSDASH = '<<-'
+CLOBBER   = '>|'
+
+// reserved words
+IF    = 'if'    !W
+THEN  = 'then'  !W
+ELSE  = 'else'  !W
+ELIF  = 'elif'  !W
+FI    = 'fi'    !W
+DO    = 'do'    !W
+DONE  = 'done'  !W
+CASE  = 'case'  !W
+ESAC  = 'esac'  !W
+WHILE = 'while' !W
+UNTIL = 'until' !W
+FOR   = 'for'   !W
+
+// reserved word in some context
+LBRACE = '{'
+RBRACE = '}'
+BANG   = '!'
+IN     = 'in' !W
+
+// name or word //FIXME:
+NAME = [_a-zA-Z][_a-zA-Z0-9]*
+WORD = NAME
+
+IO_NUMBER = [0-9] ![0-9]
+NEWLINE = [\n\r]
+
+
+// #####################
+// ##     grammar     ##
+// #####################
+
+CompleteCommand
+    = List Separator?
+
+List
+    = AndOr (SeparatorOp AndOr)*
+
+AndOr
+    = Pipeline ((AND_IF / OR_IF) LineBreak Pipeline)*
+
+Pipeline
+    = BANG? PipeSequence
+
+PipeSequence
+    = Command ('|' LineBreak Command)*
+
+Command
+    = SimpleCommand
+    / CompoundCommand RedirectList?
+    / FunctionDefinition
+
+CompoundCommand
+    = BraceGroup
+    / Subshell
+    / ForClause
+    / CaseClause
+    / IfClause
+    / WhileClause
+    / UntilClause
+
+Subshell
+    = '(' CompoundList ')'
+
+CompoundList
+    = NewlineList? Term Separator?
+
+Term
+    = AndOr (Separator AndOr)*
+
+ForCluase
+    = FOR Name LineBreak (IN WordList? SequentialSep)? DoGroup
+
+Name
+    = NAME //FIXME:
+
+WordList
+    = WORD+ //FIXME:
+
+CaseClause
+    = CASE WORD LineBreak IN LineBreak (CaseList / CaseListNS)? ESAC
+
+CaseListNS
+    = CaseList ? CaseItemNS
+
+CaseList
+    = CaseItem+
+
+CaseItemNS
+    = '('? Pattern ')' CompoundList? LineBreak
+
+CaseItem
+    = '('? Pattern ')' (LineBreak / CompoundList) DSEMI LineBreak
+
+Pattern
+    = WORD ('|' WORD)* //FIXME:
+
+IfClause
+    = IF CompoundList THEN CompoundList ElsePart? FI
+
+ElsePart
+    = ELIF CompoundList THEN ElsePart
+    / ELSE CompoundList
+
+WhileClause
+    = WHILE CompoundList DoGroup
+
+UntilClause
+    = UNTIL CompoundList DoGroup
+
+FunctionDefinition
+    = Fname '(' ')' LineBreak FunctionBody
+
+FunctionBody
+    = CompoundCommand RedirectList? //FIXME:
+
+Fname
+    = NAME //FIXME:
+
+BraceGroup
+    = LBRACE CompoundList RBRACE
+
+DoGroup
+    = DO CompoundList DONE //FIXME:
+
+SimpleCommand
+    = CmdPrefix (CmdWord? CmdSuffix)?
+    / CmdName CmdSuffix?
+
+CmdName
+    = WORD //FIXME:
+
+CmdWord
+    = WORD //FIXME:
+
+CmdSuffix
+    = (IORedirect / WORD)+
+
+RedirectList
+    = IoRedirect+
+
+IoRedirect
+    = IO_NUMBER? (IoFile / IoHere)
+
+IoFile
+    = '<'       FileName
+    / LESSAND   FileName
+    / '>'       FileName
+    / GREATAND  Filename
+    / DGREAT    Filename
+    / LESSGREAT Filename
+    / CLOBBER   Filename
+
+FileName
+    = WORD //FIXME:
+
+IoHere
+    = DLESS HereEnd
+    / DLESSDASH HereEnd
+
+HereEnd
+    = WORD //FIXME:
+
+NewlineList
+    = NEWLINE+
+
+LineBreak
+    = NewLineList?
+
+SeparatorOp
+    = '&' / ';'
+
+Separator
+    = SeparatorOp LineBreak
+    / NewlineList
+
+SequentialSep
+    = ';' LineBreak
+    / NewlineList
