@@ -4,6 +4,9 @@
 
 // entry point
 W = [a-zA-Z]
+_ = [ \t]*
+
+
 File = CompleteCommand
 
 // ##############################
@@ -42,6 +45,11 @@ RBRACE = '}'
 BANG   = '!'
 IN     = 'in' !W
 
+KEYWORD
+    = IF / THEN / ELSE / ELIF / FI / DO
+    / DONE / CASE / ESAC / WHILE / UNTIL / FOR
+    / IN
+
 // name or word //FIXME:
 NAME = [_a-zA-Z][_a-zA-Z0-9]*
 WORD = NAME
@@ -56,7 +64,7 @@ ASSIGNMENT_WORD = '='
 // #####################
 
 CompleteCommand
-    = List Separator?
+    = _ List Separator?
 
 List
     = AndOr (SeparatorOp AndOr)*
@@ -65,10 +73,10 @@ AndOr
     = Pipeline ((AND_IF / OR_IF) LineBreak Pipeline)*
 
 Pipeline
-    = BANG? PipeSequence
+    = (BANG _)? PipeSequence
 
 PipeSequence
-    = Command ('|' LineBreak Command)*
+    = Command ( _ '|' LineBreak Command)*
 
 Command
     = SimpleCommand
@@ -85,7 +93,7 @@ CompoundCommand
     / UntilClause
 
 Subshell
-    = '(' CompoundList ')'
+    = '(' _ CompoundList _ ')'
 
 CompoundList
     = NewlineList? Term Separator?
@@ -94,66 +102,66 @@ Term
     = AndOr (Separator AndOr)*
 
 ForClause
-    = FOR Name LineBreak (IN WordList? SequentialSep)? DoGroup
+    = FOR _ Name LineBreak (IN _ WordList? SequentialSep)? DoGroup
 
 Name
-    = NAME //FIXME:
+    = [_a-zA-Z] [_a-zA-Z0-9]*
 
 WordList
-    = WORD+ //FIXME:
+    = WORD+
 
 CaseClause
-    = CASE WORD LineBreak IN LineBreak (CaseList / CaseListNS)? ESAC
+    = CASE WORD LineBreak IN _ LineBreak (CaseList / CaseListNS)? ESAC
 
 CaseListNS
-    = CaseList? CaseItemNS
+    = CaseList? _ CaseItemNS
 
 CaseList
-    = CaseItem+
+    = CaseItem ( _ CaseItem)*
 
 CaseItemNS
-    = '('? Pattern ')' CompoundList? LineBreak
+    = '('? _ Pattern _ ')' _ CompoundList? LineBreak
 
 CaseItem
-    = '('? Pattern ')' (LineBreak / CompoundList) DSEMI LineBreak
+    = '('? _ Pattern _ ')' _ (LineBreak / CompoundList) _ DSEMI LineBreak
 
 Pattern
-    = WORD ('|' WORD)* //FIXME:
+    = WORD ( _ '|' _ WORD)*
 
 IfClause
-    = IF CompoundList THEN CompoundList ElsePart? FI
+    = IF _ CompoundList _ THEN _ CompoundList _ ElsePart? FI
 
 ElsePart
-    = ELIF CompoundList THEN ElsePart
-    / ELSE CompoundList
+    = ELIF _ CompoundList _ THEN _ ElsePart
+    / ELSE _ CompoundList _
 
 WhileClause
-    = WHILE CompoundList DoGroup
+    = WHILE _ CompoundList _ DoGroup
 
 UntilClause
-    = UNTIL CompoundList DoGroup
+    = UNTIL _ CompoundList _ DoGroup
 
 FunctionDefinition
-    = Fname '(' ')' LineBreak FunctionBody
+    = Fname _ '(' _ ')' LineBreak FunctionBody
 
 FunctionBody
-    = CompoundCommand RedirectList? //FIXME:
+    = CompoundCommand RedirectList? //FIXME: not allow word expansion
 
 Fname
-    = NAME //FIXME:
+    = NAME
 
 BraceGroup
-    = LBRACE CompoundList RBRACE
+    = LBRACE _ CompoundList _ RBRACE
 
 DoGroup
-    = DO CompoundList DONE //FIXME:
+    = DO _ CompoundList _ DONE
 
 SimpleCommand
     = CmdPrefix (CmdWord? CmdSuffix)?
     / CmdName CmdSuffix?
 
 CmdName
-    = WORD //FIXME:
+    = !KEYWORD ( '\\' [= \t\n\r] / ![= \t\n\r] .)+
 
 CmdWord
     = WORD //FIXME:
@@ -190,18 +198,18 @@ HereEnd
     = WORD //FIXME:
 
 NewlineList
-    = NEWLINE+
+    = _ (NEWLINE _)+
 
 LineBreak
     = NewlineList?
 
 SeparatorOp
-    = '&' / ';'
+    = _ ('&' / ';') _
 
 Separator
     = SeparatorOp LineBreak
     / NewlineList
 
 SequentialSep
-    = ';' LineBreak
+    = _ ';' LineBreak
     / NewlineList
